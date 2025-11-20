@@ -5,7 +5,7 @@ from rich.console import Console
 
 def main():
     today = date.today().strftime('%A, %d-%m-%Y')
-    LLM = "qwen3"
+    LLM = "qwen3:4b"
 
     name = input("Enter your name: ")
     star_sign = input("Enter your star sign: ")
