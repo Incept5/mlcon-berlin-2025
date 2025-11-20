@@ -10,7 +10,7 @@ def time_execution(func):
     return wrapper
 
 client = ollama.Client()
-run_query = time_execution(lambda p: client.generate(model="qwen3:4b-instruct", prompt=p,
+run_query = time_execution(lambda p: client.generate(model="qwen3:4b", prompt=p,
                           system="You are a clever assistant, provide simple answers with no explanation in English only"))
 
 run_query(-1, "") # Initialise model so as not to screw up the first timing
