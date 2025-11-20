@@ -39,11 +39,11 @@ Visit [ollama.com](https://ollama.com) and install Ollama for your operating sys
 Then download the models we'll use:
 ```bash
 ollama serve  # Start Ollama (run in separate terminal)
-ollama pull qwen3:4b          # Fast general-purpose model
-ollama pull gemma3n:e4b       # High-quality reasoning model
-ollama pull embeddinggemma    # For embeddings/RAG
-ollama pull all-minilm        # Alternative embedding model
-ollama pull qwen2.5-coder     # For code generation
+ollama pull qwen3:4b          # 2.5GB Fast general-purpose model
+ollama pull gemma3n:e4b       # 7.5GB High-quality reasoning model
+ollama pull embeddinggemma    # 621MB For embeddings/RAG
+ollama pull all-minilm        # 45MB Alternative embedding model
+ollama pull qwen2.5-coder     # 4.7GB For code generation
 ```
 
 ### 4. (Optional) Set Up API Keys
