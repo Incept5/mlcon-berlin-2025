@@ -1,0 +1,66 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+venv/
+package-lock.json
+yarn.lock
+
+# Build outputs
+dist/
+build/
+target/
+*.class
+*.jar
+*.war
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+.project
+.classpath
+.settings/
+
+# Logs and databases
+*.log
+logs/
+*.sqlite
+*.db
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+.DS_Store
+Thumbs.db
+
+# Compiled output
+*.pyc
+__pycache__/
+*.o
+*.so
+
+# Package files
+*.tgz
+*.zip
+*.tar.gz
+
+# Secrets
+*.pem
+*.key
+*.cert
+*.p12
+
+# Project specific
+.turbo/
+.cache/
+/day-2/chroma_db/
