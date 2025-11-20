@@ -1,0 +1,2 @@
+Model,Size_GB,Time_ms,Time_StdDev,Success_Rate,Total_Possible
+qwen3:latest,5.23,559,222,100,100
