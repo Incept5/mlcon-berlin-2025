@@ -59,9 +59,11 @@ __pycache__/
 *.key
 *.cert
 *.p12
+GROQ_KEY.txt
 
 # Project specific
 .turbo/
 .cache/
 /day-2/chroma_db/
 /day-1/embeddings.pkl
+embeddings.pkl
