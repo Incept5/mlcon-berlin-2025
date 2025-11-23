@@ -64,3 +64,4 @@ __pycache__/
 .turbo/
 .cache/
 /day-2/chroma_db/
+/day-1/embeddings.pkl

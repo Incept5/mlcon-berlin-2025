@@ -1,5 +1,7 @@
 # Day 1 dependencies
+python-dotenv
 requests
+urllib3<2
 tensorflow
 numpy
 matplotlib
