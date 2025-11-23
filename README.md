@@ -40,11 +40,16 @@ Then download the models we'll use:
 ```bash
 ollama serve  # Start Ollama (run in separate terminal)
 ollama pull qwen3:4b          # 2.5GB Fast general-purpose model
+ollama pull qwen3             # Alias for qwen3:4b
+ollama pull qwen3-embedding:0.6b  # 432MB For embeddings (alternative to all-minilm)
 ollama pull gemma3n:e4b       # 7.5GB High-quality reasoning model
 ollama pull embeddinggemma    # 621MB For embeddings/RAG
 ollama pull all-minilm        # 45MB Alternative embedding model
+ollama pull llama3.2          # 2.0GB For code completion and sentiment analysis
 ollama pull qwen2.5-coder     # 4.7GB For code generation
 ```
+
+Note: The scripts in this repository use various models. The models listed above are the core ones needed for most examples. Some scripts may reference other models (like qwen/qwen3-32b on Groq cloud API) which don't need to be pulled locally.
 
 ### 4. (Optional) Set Up API Keys
 If you want to try cloud-based models, create a `.env` file or export these variables:
