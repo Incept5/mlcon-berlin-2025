@@ -1,7 +1,10 @@
 import requests
 import json
 import os
+from dotenv import load_dotenv
 
+# Load environment variables from .env file
+load_dotenv()
 api_key = os.getenv("FIREWORKS_API_KEY", "")
 
 def generate_response(prompt):

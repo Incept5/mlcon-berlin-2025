@@ -1,21 +1,22 @@
-# GenAI Clients - Maven Example
+# GenAI Clients - Gradle Example
 
-Production-ready Java clients for Ollama and LM Studio using modern HTTP libraries and proper dependency management.
+Production-ready Java clients for Ollama and LM Studio using modern HTTP libraries and proper dependency management with Gradle.
 
 ## Features
 
 - ✅ **Modern HTTP client** - Uses OkHttp for efficient networking
 - ✅ **Proper JSON handling** - Gson for type-safe JSON parsing
-- ✅ **Maven profiles** - Easy switching between Ollama and LM Studio
+- ✅ **Gradle tasks** - Easy switching between Ollama and LM Studio
 - ✅ **Clean code structure** - Follows Java best practices
 - ✅ **Resource management** - Proper cleanup of HTTP connections
 - ✅ **Error handling** - Comprehensive exception handling
 - ✅ **No deprecation warnings** - Uses current Java APIs
+- ✅ **Kotlin DSL** - Modern Gradle configuration using Kotlin
 
 ## Prerequisites
 
 - **Java 17+** (Required for modern features)
-- **Maven 3.6+** (Build tool)
+- **Gradle 8.0+** (Build tool) - Wrapper included
 - **Ollama** running on `localhost:11434` (for Ollama client)
 - **LM Studio** running on `localhost:1234` (for LM Studio client)
 
@@ -25,36 +26,39 @@ Production-ready Java clients for Ollama and LM Studio using modern HTTP librari
 
 #### 1. Build the Project
 ```bash
-mvn clean compile
+./gradlew build
 ```
 
 #### 2. Run the Clients
 
-**Using Maven Profiles (Recommended)**
+**Using Custom Gradle Tasks (Recommended)**
 ```bash
 # Run Ollama client
-mvn exec:java -Pollama
+./gradlew runOllama
 
 # Run LM Studio client
-mvn exec:java -Plmstudio
+./gradlew runLmStudio
+
+# Run default client (Ollama)
+./gradlew run
 ```
 
 **Using Direct Class Execution**
 ```bash
 # Run Ollama client
-mvn exec:java -Dexec.mainClass="com.example.OllamaClient"
+./gradlew run --args="com.example.OllamaClient"
 
 # Run LM Studio client
-mvn exec:java -Dexec.mainClass="com.example.LmStudioClient"
+./gradlew run --args="com.example.LmStudioClient"
 ```
 
 #### 3. Package as Executable JAR
 ```bash
 # Build executable JAR
-mvn clean package
+./gradlew clean jar
 
 # Run the JAR (default: OllamaClient)
-java -jar target/genai-clients-1.0.0.jar
+java -jar build/libs/gradle-example-1.0.0.jar
 ```
 
 ### Option 2: Using an IDE
@@ -62,23 +66,28 @@ java -jar target/genai-clients-1.0.0.jar
 Prefer IntelliJ IDEA, Eclipse, VS Code, or NetBeans?
 
 **See [../IDE_SETUP.md](../IDE_SETUP.md)** for complete step-by-step instructions on:
-- Importing the Maven project into your IDE
+- Importing the Gradle project into your IDE
 - Setting up run configurations
 - Running with a single click
 - Debugging your code
 - IDE-specific tips and shortcuts
 
 **Quick Summary for IntelliJ IDEA:**
-1. File → Open → Select `pom.xml`
-2. Wait for Maven sync to complete
+1. File → Open → Select `build.gradle.kts`
+2. Wait for Gradle sync to complete
 3. Open `src/main/java/com/example/OllamaClient.java`
 4. Right-click → Run 'OllamaClient.main()'
 
 ## Project Structure
 
 ```
-maven-example/
-├── pom.xml                           # Maven configuration
+gradle-example/
+├── build.gradle.kts                  # Gradle configuration (Kotlin DSL)
+├── settings.gradle.kts               # Project settings
+├── gradle/                           # Gradle wrapper files
+│   └── wrapper/
+├── gradlew                           # Gradle wrapper script (Unix)
+├── gradlew.bat                       # Gradle wrapper script (Windows)
 ├── README.md                         # This file
 └── src/
     └── main/
@@ -213,57 +222,73 @@ requestJson.addProperty("max_tokens", 100);
 requestJson.addProperty("top_p", 0.9);
 ```
 
-## Maven Commands Reference
+## Gradle Commands Reference
 
 ```bash
 # Clean build artifacts
-mvn clean
+./gradlew clean
 
 # Compile source code
-mvn compile
+./gradlew compileJava
 
 # Run tests (when added)
-mvn test
+./gradlew test
 
 # Package as JAR
-mvn package
+./gradlew jar
 
-# Install to local Maven repository
-mvn install
+# Build project (compile + test + jar)
+./gradlew build
 
-# Run with Ollama profile
-mvn exec:java -Pollama
+# Run with Ollama client
+./gradlew runOllama
 
-# Run with LM Studio profile
-mvn exec:java -Plmstudio
+# Run with LM Studio client
+./gradlew runLmStudio
 
-# Run specific class
-mvn exec:java -Dexec.mainClass="com.example.OllamaClient"
+# Run default client
+./gradlew run
 
-# Clean and package in one command
-mvn clean package
+# Clean and build in one command
+./gradlew clean build
 
 # Skip tests during build
-mvn clean package -DskipTests
+./gradlew clean build -x test
+
+# List all available tasks
+./gradlew tasks
+
+# Show project dependencies
+./gradlew dependencies
+
+# Refresh dependencies
+./gradlew build --refresh-dependencies
 ```
+
+## Gradle Wrapper
+
+This project includes the Gradle Wrapper, which ensures everyone uses the same Gradle version:
+
+```bash
+# Unix/macOS
+./gradlew [task]
+
+# Windows
+gradlew.bat [task]
+```
+
+The wrapper automatically downloads the correct Gradle version on first use.
 
 ## Known Warnings
 
 You may see some warnings when running the application:
-
-### Maven/Java Runtime Warnings
-```
-WARNING: A restricted method in java.lang.System has been called
-WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
-```
-**These are from Maven's internal dependencies and cannot be avoided.** They don't affect the functionality of your application.
 
 ### OkHttp Thread Warnings
 ```
 [WARNING] thread Thread[#XX,OkHttp TaskRunner,5,...] will linger despite being 
 asked to die via interruption
 ```
-**This is expected behavior.** It occurs because Maven's exec plugin forcibly terminates the JVM, interrupting OkHttp's background threads. The code includes proper cleanup in the `finally` block, but Maven's termination is immediate. This warning is informational only and doesn't affect the HTTP request functionality.
+**This is expected behavior.** It occurs because Gradle's application plugin forcibly terminates the JVM, interrupting OkHttp's background threads. The code includes proper cleanup in the `finally` block, but Gradle's termination is immediate. This warning is informational only and doesn't affect the HTTP request functionality.
 
 ## Troubleshooting
 
@@ -274,29 +299,36 @@ asked to die via interruption
 # Check Java version (must be 17+)
 java -version
 
-# Set JAVA_HOME if needed
+# Set JAVA_HOME if needed (macOS/Linux)
 export JAVA_HOME=/path/to/java17
+
+# Set JAVA_HOME (Windows)
+set JAVA_HOME=C:\path\to\java17
 ```
 
-#### Maven Not Found
+#### Gradle Issues
 ```bash
+# Use the wrapper (recommended)
+./gradlew build
+
+# Or install Gradle globally
 # macOS
-brew install maven
+brew install gradle
 
 # Linux
-sudo apt install maven
+sudo apt install gradle
 
 # Windows
-choco install maven
+choco install gradle
 ```
 
 #### Dependency Download Issues
 ```bash
-# Clear Maven cache
-rm -rf ~/.m2/repository
+# Clear Gradle cache
+rm -rf ~/.gradle/caches
 
-# Force update
-mvn clean install -U
+# Force refresh dependencies
+./gradlew build --refresh-dependencies
 ```
 
 ### Runtime Issues
@@ -329,21 +361,22 @@ ollama pull qwen3
 
 ## Adding to Your Project
 
-To use these clients in your own Maven project:
+To use these clients in your own Gradle project:
 
-```xml
-<dependencies>
-    <dependency>
-        <groupId>com.squareup.okhttp3</groupId>
-        <artifactId>okhttp</artifactId>
-        <version>4.12.0</version>
-    </dependency>
-    <dependency>
-        <groupId>com.google.code.gson</groupId>
-        <artifactId>gson</artifactId>
-        <version>2.10.1</version>
-    </dependency>
-</dependencies>
+**build.gradle.kts:**
+```kotlin
+dependencies {
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.google.code.gson:gson:2.10.1")
+}
+```
+
+**build.gradle (Groovy DSL):**
+```groovy
+dependencies {
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'com.google.code.gson:gson:2.10.1'
+}
 ```
 
 Then copy the client classes into your project and modify as needed.
@@ -413,6 +446,48 @@ public class GenAIConfig {
 }
 ```
 
+## Gradle vs Maven
+
+This project uses **Gradle with Kotlin DSL** for build configuration. Key differences from Maven:
+
+### Advantages of Gradle:
+- **Faster builds** - Incremental compilation and build cache
+- **More flexible** - Programmatic build scripts
+- **Better dependency management** - Dynamic versions and excludes
+- **Modern tooling** - Kotlin DSL provides better IDE support
+- **Multi-project builds** - Native support for complex projects
+
+### Build File Comparison:
+
+**Gradle (Kotlin DSL):**
+```kotlin
+dependencies {
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.google.code.gson:gson:2.10.1")
+}
+```
+
+**Maven:**
+```xml
+<dependencies>
+    <dependency>
+        <groupId>com.squareup.okhttp3</groupId>
+        <artifactId>okhttp</artifactId>
+        <version>4.12.0</version>
+    </dependency>
+</dependencies>
+```
+
+### Task Comparison:
+
+| Task | Gradle | Maven |
+|------|--------|-------|
+| Clean | `./gradlew clean` | `mvn clean` |
+| Compile | `./gradlew compileJava` | `mvn compile` |
+| Test | `./gradlew test` | `mvn test` |
+| Package | `./gradlew jar` | `mvn package` |
+| Run | `./gradlew run` | `mvn exec:java` |
+
 ## Next Steps
 
 1. **Explore the code** - Read through `OllamaClient.java` and `LmStudioClient.java`
@@ -420,6 +495,7 @@ public class GenAIConfig {
 3. **Add features** - Implement streaming, conversation history, etc.
 4. **Build your app** - Use these clients as building blocks
 5. **Add tests** - Create JUnit tests for your implementations
+6. **Learn Gradle** - Explore the build.gradle.kts configuration
 
 ## Resources
 
@@ -427,8 +503,11 @@ public class GenAIConfig {
 - [LM Studio Documentation](https://lmstudio.ai/docs)
 - [OkHttp Documentation](https://square.github.io/okhttp/)
 - [Gson Documentation](https://github.com/google/gson)
-- [Maven Documentation](https://maven.apache.org/guides/)
+- [Gradle Documentation](https://docs.gradle.org/)
+- [Gradle Kotlin DSL](https://docs.gradle.org/current/userguide/kotlin_dsl.html)
 
 ## License
 
 MIT
+
+---
