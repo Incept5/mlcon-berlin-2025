@@ -1,4 +1,36 @@
 #!/usr/bin/env python3
+"""
+Token Probability Analyzer
+
+An interactive Gradio application for analyzing token probabilities from language models.
+This tool helps understand how LLMs generate text by visualizing the probability distribution
+of next tokens and allowing step-by-step token-level generation.
+
+Features:
+- Two operation modes: Chat (conversational) and Generate (continuation)
+- Real-time token probability analysis with configurable sampling parameters
+- Interactive token-by-token generation
+- Visual probability distribution via pie charts
+- Support for GGUF format models via llama-cpp-python
+- Automatic retry logic to handle llama-cpp intermittent bugs
+
+Usage:
+    python logit_probabilities.py
+
+Environment Variables:
+    GGUF_MODEL_PATH: Path to the GGUF model file (optional)
+    GRADIO_SERVER_PORT: Port for Gradio server (optional)
+    GGML_METAL_LOG_LEVEL: Metal backend logging level (default: 1)
+
+Dependencies:
+    - gradio: Web UI framework
+    - llama-cpp-python: Python bindings for llama.cpp
+    - numpy: Numerical operations
+    - plotly: Interactive visualizations
+
+Author: MLCon Berlin 2025 Workshop
+Date: November 2025
+"""
 
 import os
 import sys
@@ -11,6 +43,7 @@ from dataclasses import dataclass
 from typing import List, Tuple, Optional
 import json
 
+# Reduce Metal backend logging noise on macOS
 os.environ.setdefault("GGML_METAL_LOG_LEVEL", "1")
 
 # Constants
@@ -21,6 +54,20 @@ DEFAULT_PROMPT = "The capital of France is"
 
 @dataclass
 class InferenceConfig:
+    """
+    Configuration for token sampling and inference parameters.
+    
+    These parameters control how the model generates tokens and which tokens
+    are displayed in the probability analysis.
+    
+    Attributes:
+        temperature: Controls randomness in sampling (0.0 = deterministic, higher = more random)
+                    Applied by dividing logits before converting to probabilities
+        top_p: Nucleus sampling threshold - keeps tokens with cumulative probability >= top_p
+        top_k: Limits consideration to the top k most probable tokens
+        repeat_penalty: Penalizes tokens that have already appeared (> 1.0 = less repetition)
+        num_tokens: Number of top tokens to display in results
+    """
     temperature: float = 0.8
     top_p: float = 0.95
     top_k: int = 40
@@ -29,32 +76,89 @@ class InferenceConfig:
 
 
 class SuppressStderr:
+    """
+    Context manager to suppress stderr output.
+    
+    Used to silence verbose llama-cpp initialization messages that clutter the console.
+    
+    Usage:
+        with SuppressStderr():
+            # Code that produces stderr output
+            noisy_function()
+    """
+    
     def __enter__(self):
+        """Redirect stderr to devnull."""
         self._original_stderr = sys.stderr
         sys.stderr = open(os.devnull, 'w')
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Restore original stderr."""
         sys.stderr.close()
         sys.stderr = self._original_stderr
 
 
 class TokenProbabilityAnalyzer:
+    """
+    Analyzes token probabilities from a loaded language model.
+    
+    This class handles:
+    - Loading GGUF format models via llama-cpp-python
+    - Extracting token probabilities (logits) from model outputs
+    - Applying sampling parameters (temperature, top-p, top-k)
+    - Formatting prompts for chat and generation modes
+    - Retry logic to handle intermittent llama-cpp bugs
+    
+    Attributes:
+        model: Loaded Llama model instance
+        debug_info: Accumulates debugging information during operations
+    """
+    
     def __init__(self, model_path: str, n_ctx: int = 2048, n_gpu_layers: int = 0):
+        """
+        Initialize the analyzer with a GGUF model.
+        
+        Args:
+            model_path: Path to the .gguf model file
+            n_ctx: Context window size (number of tokens)
+            n_gpu_layers: Number of layers to offload to GPU (-1 = all, 0 = none)
+        
+        Raises:
+            Exception: If model file not found or loading fails
+        """
         with SuppressStderr():
             self.model = Llama(
                 model_path=model_path,
-                logits_all=True,
+                logits_all=True,  # Required to get token probabilities
                 n_ctx=n_ctx,
                 n_gpu_layers=n_gpu_layers,
                 verbose=False,
-                chat_format="chatml"
+                chat_format="chatml"  # Use ChatML format for structured conversations
             )
-        self.debug_info = ""
+        self.debug_info = ""  # Accumulates debug messages during operations
 
     def analyze_next_tokens(self, system_prompt: str, user_prompt: str, config: InferenceConfig) -> List[
         Tuple[str, float, float]]:
-        # Format prompt for chat
+        """
+        Analyze token probabilities for the next token in a chat conversation.
+        
+        Formats the input as a ChatML conversation and analyzes what the assistant
+        would generate next.
+        
+        Args:
+            system_prompt: System-level instructions for the assistant
+            user_prompt: The user's message
+            config: Sampling configuration parameters
+        
+        Returns:
+            List of tuples: (token, probability, original_logit)
+            Empty list if analysis fails or reaches end-of-sequence
+        """
+        # Format prompt using ChatML convention:
+        # <|im_start|>system\n{instructions}<|im_end|>\n
+        # <|im_start|>user\n{message}<|im_end|>\n
+        # <|im_start|>assistant\n{response}
         formatted_prompt = "<|im_start|>system\n"
         if system_prompt.strip():
             formatted_prompt += system_prompt.strip()
@@ -79,7 +183,7 @@ class TokenProbabilityAnalyzer:
 
         result = self._extract_probabilities(output, config)
 
-        # Retry logic if we got empty logprobs
+        # Retry logic to handle intermittent llama-cpp bug where logprobs are empty
         if not result and "choices" in output and output["choices"]:
             choice = output["choices"][0]
             if choice.get("finish_reason") == "length":
@@ -106,7 +210,21 @@ class TokenProbabilityAnalyzer:
         return result
 
     def analyze_continuation(self, prompt: str, config: InferenceConfig) -> List[Tuple[str, float, float]]:
-        # For generate mode - continue from current text
+        """
+        Analyze token probabilities for continuing existing text.
+        
+        Used in Generate mode to see what tokens would naturally continue
+        the provided text.
+        
+        Args:
+            prompt: Text to continue from
+            config: Sampling configuration parameters
+        
+        Returns:
+            List of tuples: (token, probability, original_logit)
+            Empty list if analysis fails or reaches end-of-sequence
+        """
+        # For generate mode - continue from current text without special formatting
         self.debug_info = f"Analyzing continuation of: {repr(prompt[-50:])}\n"
         self.debug_info += f"Full prompt length: {len(prompt)} chars\n"
 
@@ -172,7 +290,26 @@ class TokenProbabilityAnalyzer:
         return result
 
     def _extract_probabilities(self, output: dict, config: InferenceConfig) -> List[Tuple[str, float, float]]:
-        # Check what we're getting
+        """
+        Extract and process token probabilities from model output.
+        
+        This method:
+        1. Extracts raw logits from the model output
+        2. Applies temperature scaling
+        3. Converts logits to probabilities via softmax (exp normalization)
+        4. Applies top-k filtering
+        5. Applies top-p (nucleus) filtering
+        6. Renormalizes probabilities to sum to 1.0
+        
+        Args:
+            output: Raw output dictionary from llama-cpp model.create_completion()
+            config: Sampling parameters to apply
+        
+        Returns:
+            List of (token, probability, original_logit) tuples, sorted by probability
+            Limited to config.num_tokens entries
+        """
+        # Validate output structure
         if "choices" not in output or not output["choices"]:
             self.debug_info += "ERROR: No choices in output\n"
             return []
@@ -207,23 +344,26 @@ class TokenProbabilityAnalyzer:
         token_logprobs = list(first_position.items())
         original_logprobs = {token: logprob for token, logprob in token_logprobs}
 
-        # Apply temperature scaling
+        # Apply temperature scaling: dividing logits by temperature before softmax
+        # Lower temperature (< 1.0) makes distribution more peaked (more deterministic)
+        # Higher temperature (> 1.0) makes distribution flatter (more random)
         if config.temperature != 1.0:
             token_logprobs = [(token, logprob / config.temperature) for token, logprob in token_logprobs]
 
-        # Convert to probabilities
+        # Convert log probabilities to probabilities: P(token) = e^(logit)
+        # Note: These are unnormalized probabilities before filtering
         token_probs = [(token, float(np.exp(logprob)), original_logprobs[token]) for token, logprob in token_logprobs]
         token_probs.sort(key=lambda x: x[1], reverse=True)
 
-        # Apply top-k filtering
+        # Apply top-k filtering: keep only the k most probable tokens
         if config.top_k > 0:
             token_probs = token_probs[:config.top_k]
 
-        # Apply top-p filtering
+        # Apply top-p (nucleus) filtering: keep smallest set of tokens whose cumulative probability >= top_p
         if config.top_p < 1.0:
             token_probs = self._apply_top_p_filtering(token_probs, config.top_p)
 
-        # Renormalize
+        # Renormalize probabilities to sum to 1.0 after filtering
         total_prob = sum(prob for _, prob, _ in token_probs)
         if total_prob > 0:
             token_probs = [(token, prob / total_prob, logprob) for token, prob, logprob in token_probs]
@@ -232,6 +372,20 @@ class TokenProbabilityAnalyzer:
 
     def _apply_top_p_filtering(self, token_probs: List[Tuple[str, float, float]], top_p: float) -> List[
         Tuple[str, float, float]]:
+        """
+        Apply nucleus (top-p) sampling filter.
+        
+        Keeps the smallest set of tokens whose cumulative probability is >= top_p.
+        This is more dynamic than top-k as the number of tokens varies based on
+        the probability distribution.
+        
+        Args:
+            token_probs: List of (token, probability, logit) tuples, sorted by probability
+            top_p: Cumulative probability threshold (e.g., 0.95 = keep tokens until 95% of probability mass)
+        
+        Returns:
+            Filtered list of token tuples
+        """
         token_probs.sort(key=lambda x: x[1], reverse=True)
         cumulative_prob = 0.0
         filtered_tokens = []
@@ -251,6 +405,17 @@ last_analysis_results: Optional[List[Tuple[str, float, float]]] = None
 
 
 def load_model(model_path: str, context_size: int, gpu_layers: int) -> str:
+    """
+    Load a GGUF model file into the analyzer.
+    
+    Args:
+        model_path: Path to the .gguf model file
+        context_size: Maximum context window size in tokens
+        gpu_layers: Number of layers to offload to GPU (-1 for all)
+    
+    Returns:
+        Status message indicating success or failure
+    """
     global current_analyzer, last_analysis_results
 
     if not model_path.strip():
@@ -269,9 +434,23 @@ def load_model(model_path: str, context_size: int, gpu_layers: int) -> str:
 
 
 def is_stop_token(token: str) -> bool:
+    """
+    Check if a token is a stop/end-of-sequence token.
+    
+    Stop tokens indicate the model wants to end generation. When a stop token
+    is the top choice, the "Add Top Token" button should be disabled.
+    
+    Args:
+        token: Token string to check
+    
+    Returns:
+        True if token is a stop token, False otherwise
+    """
+    # Common stop tokens across different model formats
     stop_tokens = {'</s>', '<|endoftext|>', '<|im_end|>', '<|end|>', '<|eot_id|>', '<eos>'}
     if token in stop_tokens:
         return True
+    # Control characters (ASCII < 32) are also treated as stops
     if len(token) == 1 and ord(token) < 32:
         return True
     return False
@@ -279,6 +458,26 @@ def is_stop_token(token: str) -> bool:
 
 def analyze_tokens(mode: str, system_prompt: str, user_prompt: str, generate_prompt: str,
                    temperature: float, top_p: float, top_k: int, repeat_penalty: float, num_tokens: int) -> tuple:
+    """
+    Analyze next token probabilities based on the current mode and inputs.
+    
+    This is the main analysis function called by the "Analyze" button. It delegates
+    to either analyze_next_tokens (Chat mode) or analyze_continuation (Generate mode).
+    
+    Args:
+        mode: "Chat" or "Generate"
+        system_prompt: System instructions (Chat mode only)
+        user_prompt: User message (Chat mode only)
+        generate_prompt: Text to continue (Generate mode only)
+        temperature: Sampling temperature
+        top_p: Nucleus sampling threshold
+        top_k: Top-k filtering limit
+        repeat_penalty: Penalty for repeated tokens
+        num_tokens: Number of top tokens to display
+    
+    Returns:
+        Tuple of (results_markdown, pie_chart, button_state, generate_prompt, chat_response)
+    """
     global current_analyzer, last_analysis_results
 
     if current_analyzer is None:
@@ -336,6 +535,31 @@ def analyze_tokens(mode: str, system_prompt: str, user_prompt: str, generate_pro
 def add_top_token(mode: str, system_prompt: str, user_prompt: str, generate_prompt: str,
                   chat_response: str, temperature: float, top_p: float, top_k: int,
                   repeat_penalty: float, num_tokens: int) -> tuple:
+    """
+    Add the most probable token to the text and analyze the next token probabilities.
+    
+    This function enables step-by-step token generation, allowing users to see
+    how the model builds text one token at a time.
+    
+    Behavior varies by mode:
+    - Chat mode: Adds token to chat_response and continues the assistant's reply
+    - Generate mode: Adds token to generate_prompt and continues the text
+    
+    Args:
+        mode: "Chat" or "Generate"
+        system_prompt: System instructions (Chat mode)
+        user_prompt: User message (Chat mode)
+        generate_prompt: Current text (Generate mode)
+        chat_response: Current assistant response (Chat mode)
+        temperature: Sampling temperature
+        top_p: Nucleus sampling threshold
+        top_k: Top-k filtering limit
+        repeat_penalty: Penalty for repeated tokens
+        num_tokens: Number of top tokens to display
+    
+    Returns:
+        Tuple of (results_markdown, pie_chart, button_state, generate_prompt, chat_response)
+    """
     global current_analyzer, last_analysis_results
 
     if not last_analysis_results:
@@ -443,6 +667,15 @@ def add_top_token(mode: str, system_prompt: str, user_prompt: str, generate_prom
 
 
 def format_results(token_probs: List[Tuple[str, float, float]]) -> str:
+    """
+    Format token probabilities as readable markdown text.
+    
+    Args:
+        token_probs: List of (token, probability, logit) tuples
+    
+    Returns:
+        Formatted markdown string with token list and statistics
+    """
     result = f"**Top {len(token_probs)} next token probabilities:**\n"
     result += "─" * 60 + "\n"
 
@@ -462,6 +695,17 @@ def format_results(token_probs: List[Tuple[str, float, float]]) -> str:
 
 
 def create_pie_chart(token_probs: List[Tuple[str, float, float]]):
+    """
+    Create an interactive pie chart visualization of token probabilities.
+    
+    Stop tokens are highlighted in red for easy identification.
+    
+    Args:
+        token_probs: List of (token, probability, logit) tuples
+    
+    Returns:
+        Plotly Figure object or None if no tokens provided
+    """
     if not token_probs:
         return None
 
@@ -501,6 +745,18 @@ def create_pie_chart(token_probs: List[Tuple[str, float, float]]):
 
 
 def create_gradio_interface():
+    """
+    Create the Gradio web interface.
+    
+    The interface has two main tabs:
+    1. Token Analysis: Main interaction area with two modes
+       - Chat mode: Simulates a conversation with system/user prompts
+       - Generate mode: Continues existing text
+    2. Model Configuration: Load GGUF models and configure hardware settings
+    
+    Returns:
+        Gradio Blocks application
+    """
     with gr.Blocks(title="Token Probability Analyzer") as app:
         with gr.Row():
             with gr.Column():
@@ -630,6 +886,13 @@ def create_gradio_interface():
 
 
 def main():
+    """
+    Application entry point.
+    
+    - Attempts to auto-load model from GGUF_MODEL_PATH environment variable
+    - Configures and launches Gradio interface
+    - Supports custom port via GRADIO_SERVER_PORT environment variable
+    """
     print("Starting Token Probability Analyzer...")
 
     # Try to load model from environment variable or default path
