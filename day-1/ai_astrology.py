@@ -7,6 +7,14 @@ def main():
     today = date.today().strftime('%A, %d-%m-%Y')
     LLM = "qwen3:4b"
 
+    # Allow specifying remote Ollama server
+    ollama_host = input("Enter Ollama server URL (press Enter for localhost): ").strip()
+    if not ollama_host:
+        ollama_host = "http://localhost:11434"
+    
+    # Create Ollama client with specified host
+    client = ollama.Client(host=ollama_host)
+    
     name = input("Enter your name: ")
     star_sign = input("Enter your star sign: ")
 
@@ -17,7 +25,7 @@ def main():
 
     instruction = f"Please provide a horoscope for {name} who's star sign is {star_sign}. Today's date is {today}."
 
-    response = ollama.chat( model=LLM, think=True, stream=False,
+    response = client.chat( model=LLM, think=True, stream=False,
         messages=[ {'role': 'system', 'content': system_prompt}, {'role': 'user', 'content': instruction} ],
         options=Options( temperature=0.8, num_ctx=4096, top_p=0.95, top_k=40, num_predict=-1 ))
 
