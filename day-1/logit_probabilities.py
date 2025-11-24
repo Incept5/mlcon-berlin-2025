@@ -501,7 +501,7 @@ def create_pie_chart(token_probs: List[Tuple[str, float, float]]):
 
 
 def create_gradio_interface():
-    with gr.Blocks(title="Token Probability Analyzer", theme=gr.themes.Soft()) as app:
+    with gr.Blocks(title="Token Probability Analyzer") as app:
         with gr.Row():
             with gr.Column():
                 gr.Markdown("# 🔍 Token Probability Analyzer")
@@ -520,33 +520,35 @@ def create_gradio_interface():
                 with gr.Column():
 
                     # Chat mode inputs
-                    with gr.Group(visible=True) as chat_group:
-                        system_prompt = gr.Textbox(
-                            label="System Prompt (Optional)",
-                            value="",
-                            lines=2,
-                            placeholder="System instructions..."
-                        )
-                        user_prompt = gr.Textbox(
-                            label="User Prompt",
-                            value=DEFAULT_PROMPT,
-                            lines=2
-                        )
-                        chat_response = gr.Textbox(
-                            label="Assistant Response",
-                            value="",
-                            lines=3,
-                            placeholder="Response will appear here as you add tokens..."
-                        )
+                    system_prompt = gr.Textbox(
+                        label="System Prompt (Optional)",
+                        value="",
+                        lines=2,
+                        placeholder="System instructions...",
+                        visible=True
+                    )
+                    user_prompt = gr.Textbox(
+                        label="User Prompt",
+                        value=DEFAULT_PROMPT,
+                        lines=2,
+                        visible=True
+                    )
+                    chat_response = gr.Textbox(
+                        label="Assistant Response",
+                        value="",
+                        lines=3,
+                        placeholder="Response will appear here as you add tokens...",
+                        visible=True
+                    )
 
                     # Generate mode input
-                    with gr.Group(visible=False) as generate_group:
-                        generate_prompt = gr.Textbox(
-                            label="Text to Continue",
-                            value=DEFAULT_PROMPT,
-                            lines=6,
-                            placeholder="Text will grow here as you add tokens..."
-                        )
+                    generate_prompt = gr.Textbox(
+                        label="Text to Continue",
+                        value=DEFAULT_PROMPT,
+                        lines=6,
+                        placeholder="Text will grow here as you add tokens...",
+                        visible=False
+                    )
 
                     with gr.Accordion("Parameters", open=True):
                         with gr.Row():
@@ -583,14 +585,24 @@ def create_gradio_interface():
         # Toggle visibility based on mode
         def toggle_mode(mode):
             if mode == "Chat":
-                return gr.Group(visible=True), gr.Group(visible=False)
+                return (
+                    gr.Textbox(visible=True),   # system_prompt
+                    gr.Textbox(visible=True),   # user_prompt
+                    gr.Textbox(visible=True),   # chat_response
+                    gr.Textbox(visible=False)   # generate_prompt
+                )
             else:
-                return gr.Group(visible=False), gr.Group(visible=True)
+                return (
+                    gr.Textbox(visible=False),  # system_prompt
+                    gr.Textbox(visible=False),  # user_prompt
+                    gr.Textbox(visible=False),  # chat_response
+                    gr.Textbox(visible=True)    # generate_prompt
+                )
 
         mode.change(
             fn=toggle_mode,
             inputs=[mode],
-            outputs=[chat_group, generate_group]
+            outputs=[system_prompt, user_prompt, chat_response, generate_prompt]
         )
 
         # Event handlers
