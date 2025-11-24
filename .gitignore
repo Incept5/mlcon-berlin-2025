@@ -67,3 +67,4 @@ GROQ_KEY.txt
 /day-2/chroma_db/
 /day-1/embeddings.pkl
 embeddings.pkl
+/chroma_db/

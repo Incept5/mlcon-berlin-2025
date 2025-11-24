@@ -18,6 +18,8 @@ groq
 gradio
 openai
 anthropic
+mcp
+fastmcp
 
 # Day 2 dependencies
 chromadb
