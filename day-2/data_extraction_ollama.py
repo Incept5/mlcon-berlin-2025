@@ -3,7 +3,7 @@ import ollama
 def generate_response(prompt):
     try:
         response = ollama.generate(
-            model="qwen3:4b",
+            model="qwen3-vl:4b-instruct",
             prompt=prompt,
             think=False,
             options={"num_ctx": 8192,"temperature": 0.7}
