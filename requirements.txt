@@ -28,3 +28,4 @@ kagglehub
 textblob
 seaborn
 tiktoken
+pandas
