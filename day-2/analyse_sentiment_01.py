@@ -1,6 +1,6 @@
 import requests
 
-def analyse_sentiment(text, model="llama3.2"):
+def analyse_sentiment(text, model="qwen3-vl:4b-instruct"):
     prompt = f"""
     Analyse the sentiment of the following text and respond with exactly one word:
     'positive', 'neutral', or 'negative'.
@@ -38,7 +38,7 @@ def main():
     print("Sentiment Analysis Tool")
     print("=======================")
     print("This tool uses a local Ollama model to analyze text sentiment.")
-    print("Make sure Ollama is running with the llama3.2 model.\n")
+    print("Make sure Ollama is running...\n")
     
     while True:
         # Get user input
