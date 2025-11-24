@@ -4,7 +4,7 @@ import json
 def generate_formatted_response(prompt):
     try:
         response = ollama.generate(
-            model="qwen3",
+            model="qwen3-vl:4b-instruct",
             prompt=prompt,
             format="json",  # Only accepts "" or "json"
             options={ "num_ctx": 8192,"temperature": 0.3 }
