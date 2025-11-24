@@ -25,3 +25,4 @@ beautifulsoup4
 kagglehub
 textblob
 seaborn
+tiktoken
