@@ -14,7 +14,7 @@ import json
 os.environ.setdefault("GGML_METAL_LOG_LEVEL", "1")
 
 # Constants
-DEFAULT_MODEL_PATH = "/Users/jdavies/.cache/lm-studio/models/unsloth/Qwen3-4B-Instruct-2507-GGUF/Qwen3-4B-Instruct-2507-Q4_K_M.gguf"
+DEFAULT_MODEL_PATH = ""  # Set via Model Configuration tab or environment variable GGUF_MODEL_PATH
 DEFAULT_GPU_LAYERS = -1
 DEFAULT_PROMPT = "The capital of France is"
 
@@ -570,8 +570,8 @@ def create_gradio_interface():
                 with gr.Column():
                     model_path = gr.Textbox(
                         label="Model Path",
-                        value=DEFAULT_MODEL_PATH,
-                        placeholder="Path to .gguf file"
+                        value=os.environ.get('GGUF_MODEL_PATH', DEFAULT_MODEL_PATH),
+                        placeholder="Path to .gguf file (e.g., ~/.cache/lm-studio/models/model.gguf)"
                     )
                     with gr.Row():
                         context_size = gr.Number(label="Context Size", value=2048)
@@ -620,15 +620,31 @@ def create_gradio_interface():
 def main():
     print("Starting Token Probability Analyzer...")
 
-    # Try to load default model
-    if Path(DEFAULT_MODEL_PATH).exists():
-        load_model(DEFAULT_MODEL_PATH, 2048, DEFAULT_GPU_LAYERS)
-        print("✅ Default model loaded!")
+    # Try to load model from environment variable or default path
+    model_path = os.environ.get('GGUF_MODEL_PATH', DEFAULT_MODEL_PATH)
+    
+    if model_path and Path(model_path).exists():
+        try:
+            load_model(model_path, 2048, DEFAULT_GPU_LAYERS)
+            print(f"✅ Model loaded from: {model_path}")
+        except Exception as e:
+            print(f"⚠️ Failed to load model: {e}")
     else:
-        print("⚠️ Default model not found - load one in Model Configuration tab")
+        print("⚠️ No model loaded - please configure in the Model Configuration tab")
+        print("   You can also set the GGUF_MODEL_PATH environment variable")
+        print("   Common locations:")
+        print("   - ~/.cache/lm-studio/models/")
+        print("   - ~/.ollama/models/")
 
+    # Get port from environment or let Gradio find an available one
+    port = os.environ.get('GRADIO_SERVER_PORT')
+    
     app = create_gradio_interface()
-    app.launch(server_name="127.0.0.1", server_port=7860, share=False)
+    if port:
+        app.launch(server_name="127.0.0.1", server_port=int(port), share=False)
+    else:
+        # Let Gradio automatically find an available port
+        app.launch(server_name="127.0.0.1", share=False)
 
 
 if __name__ == "__main__":
