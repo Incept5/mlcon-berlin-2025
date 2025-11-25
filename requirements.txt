@@ -29,3 +29,5 @@ textblob
 seaborn
 tiktoken
 pandas
+sounddevice
+cartesia
