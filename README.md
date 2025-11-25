@@ -8,7 +8,37 @@ Welcome to the **2-Day Hands-on GenAI Development Bootcamp**! This repository co
 This bootcamp takes you from GenAI fundamentals to building production-ready AI systems:
 
 **Day 1**: Understanding how LLMs work, connecting to models, and building RAG systems  
-**Day 2**: Advanced applications including sentiment analysis, structured outputs, function calling, and agentic systems
+**Day 2**: Advanced applications including vision AI, sentiment analysis, structured outputs, function calling, and agentic systems
+
+## ✨ What's New in This Edition
+
+**Enhanced Vision AI**:
+- Complete vision model testing framework with 12 diverse image types
+- OCR across multiple languages (English, Japanese, French, German)
+- Technical diagram analysis and data extraction from images
+- Mathematical equation and sheet music recognition
+
+**Expanded RAG Examples**:
+- New Grimm fairy tales RAG with story-aware chunking
+- Multilingual RAG (English and German texts)
+- Both local (Ollama) and cloud (Groq) implementations
+- Simplified learning versions alongside production code
+
+**Function Calling & Tool Use**:
+- Simple starter example (`simple_tool_call.py`) for easy learning
+- Comprehensive multi-tool framework with 8+ functions
+- Model compatibility testing and comparison
+
+**Agentic Systems with MCP**:
+- Complete Model Context Protocol implementation
+- Real-world tools (country info, weather lookup)
+- Agentic loops with multi-step reasoning
+- Works with local Ollama models (no API keys needed!)
+
+**Cloud API Integration**:
+- Groq examples for ultra-fast inference
+- Direct comparisons between local and cloud approaches
+- Best practices for production deployment
 
 ## 📋 Prerequisites
 
@@ -41,16 +71,25 @@ Then download the models we'll use:
 ollama serve  # Start Ollama (run in separate terminal)
 ollama pull qwen3:4b          # 2.5GB Fast general-purpose model
 ollama pull qwen3             # Alias for qwen3:4b
+ollama pull qwen3-vl:4b-instruct  # 2.8GB Vision-language model for image understanding (recommended)
+ollama pull qwen3-vl:2b-instruct  # 1.5GB Smaller, faster vision model
 ollama pull qwen3-embedding:0.6b  # 432MB For embeddings (alternative to all-minilm)
-ollama pull qwen3-vl:8b-instruct  # 5.5GB Vision-language model for image understanding
+ollama pull embeddinggemma    # 621MB For embeddings/RAG (recommended for Grimm tales)
 ollama pull gemma3n:e4b       # 7.5GB High-quality reasoning model
-ollama pull embeddinggemma    # 621MB For embeddings/RAG
-ollama pull all-minilm        # 45MB Alternative embedding model
+ollama pull all-minilm        # 45MB Lightweight embedding model
 ollama pull llama3.2          # 2.0GB For code completion and sentiment analysis
 ollama pull qwen2.5-coder     # 4.7GB For code generation
+ollama pull qwen2.5:3b        # 1.9GB Fast model with function calling support
 ```
 
-Note: The scripts in this repository use various models. The models listed above are the core ones needed for most examples. Some scripts may reference other models (like qwen/qwen3-32b on Groq cloud API) which don't need to be pulled locally.
+**Model Usage by Feature**:
+- **Vision/OCR**: `qwen3-vl:4b-instruct` or `qwen3-vl:2b-instruct`
+- **RAG/Embeddings**: `embeddinggemma` or `all-minilm`
+- **Function Calling**: `qwen3-vl:4b-instruct`, `qwen2.5:3b`, or `mistral:7b`
+- **General Chat**: `qwen3:4b` or `llama3.2`
+- **Code Generation**: `qwen2.5-coder`
+
+Note: Some scripts reference cloud models (like `llama-3.3-70b-versatile` on Groq) which don't need to be pulled locally.
 
 ### 4. (Optional) Set Up API Keys
 If you want to try cloud-based models, create a `.env` file or export these variables:
@@ -162,26 +201,42 @@ You should see a response from the AI model!
 **Concepts**: Chunking, embeddings, vector search, context retrieval
 
 **Files to explore**:
+
+**Alice in Wonderland RAG Examples**:
 - `day-2/rag_alice_in_wonderland.py` - Basic RAG implementation
+- `day-2/rag_alice_simple.py` - Simplified version for learning
 - `day-2/rag_alice_in_wonderland_chromadb.py` - **PRODUCTION VERSION** with persistent storage
 - `day-2/rag_alice_in_wonderland_transformers.py` - Using Transformers library
-- `day-2/alice_in_on_go.py` - Text processing utilities
+- `day-2/alice_in_one_go.py` - Text processing utilities
+
+**Grimm Fairy Tales RAG Examples (NEW)**:
+- `day-2/rag_grimm_fairy_tales.py` - RAG for Grimm's fairy tales (local Ollama)
+- `day-2/rag_grimm_fairy_tales_groq.py` - Same but using Groq cloud API
+- `day-2/grimm_fairy_tales_rag_demo.py` - Interactive demo version
 
 **Data**:
-- `day-2/data/alice_in_wonderland.txt` - Sample text for RAG
+- `day-2/data/alice_in_wonderland.txt` - Alice in Wonderland text
+- `day-2/Grimms-Fairy-Tales.txt` - **NEW**: English Grimm fairy tales collection
+- `day-2/Kinder-und-Hausmärchen-der-Gebrüder-Grimm.txt` - **NEW**: German Grimm fairy tales (multilingual RAG)
 
 **What you'll do**:
-1. Start with `rag_alice_in_wonderland.py` to understand the basics
+1. Start with `rag_alice_simple.py` or `rag_alice_in_wonderland.py` to understand the basics
 2. Progress to `rag_alice_in_wonderland_chromadb.py` for the production approach
-3. Ask questions about Alice in Wonderland and see how RAG retrieves context
-4. Experiment with different chunk sizes and retrieval parameters
-5. **Bring your own documents** and adapt the code!
+3. Try the Grimm fairy tales examples to see RAG with story boundaries
+4. Compare in-memory vs persistent storage approaches
+5. Test multilingual capabilities with German fairy tales
+6. Experiment with different chunk sizes and retrieval parameters
+7. Compare local (Ollama) vs cloud (Groq) RAG performance
+8. **Bring your own documents** and adapt the code!
 
 **Key takeaways**:
 - RAG = Retrieval-Augmented Generation (give models context they don't have)
 - Process: Chunk text → Generate embeddings → Store in vector DB → Search → Generate answer
 - ChromaDB provides persistent storage so you don't re-embed each time
 - Chunking strategy significantly impacts retrieval quality
+- Different text types need different chunking strategies (novels vs fairy tales vs technical docs)
+- EmbeddingGemma uses task-specific prompts for better retrieval
+- Multilingual embeddings enable cross-language RAG
 
 **RAG Architecture**:
 ```
@@ -210,7 +265,8 @@ User Question → Embedding → Similarity Search → Top Chunks
 - `day-2/sentiment_analysis_results.png` - Visualizations
 
 **Data Extraction & Summarization**:
-- `day-2/data_extraction_ollama.py` - Extract structured data from text
+- `day-2/data_extraction_ollama.py` - Extract structured data from text (local)
+- `day-2/data_extraction_groq.py` - **NEW**: Extract & summarize using Groq API (cloud)
 - `day-2/kaggle_summary_complete.py` - Summarize large datasets
 - `day-2/scrape.py` - Basic web scraping
 - `day-2/scrape_gdpr_article.py` - Extract legal text
@@ -220,14 +276,17 @@ User Question → Embedding → Similarity Search → Top Chunks
 1. Run sentiment analysis on sample reviews
 2. Try analyzing your own text data
 3. Extract structured information from unstructured text
-4. Scrape and summarize web content
-5. Process the GDPR article to see legal text analysis
+4. Compare local (Ollama) vs cloud (Groq) extraction performance
+5. Scrape and summarize web content
+6. Process the GDPR article to see legal text analysis
 
 **Key takeaways**:
 - LLMs excel at understanding and classifying text
 - You can extract structured data from unstructured text reliably
 - Summarization helps process large documents quickly
 - Web scraping + LLM = powerful data extraction pipeline
+- Cloud APIs (Groq) offer faster inference for production use
+- Local models (Ollama) provide privacy and cost benefits
 
 ---
 
@@ -254,7 +313,48 @@ User Question → Embedding → Similarity Search → Top Chunks
 
 ---
 
-### Session 7: Code Generation 💻
+### Session 7: Vision & Multimodal AI 👁️
+
+**Concepts**: Vision-language models, image understanding, OCR, visual reasoning
+
+**Files to explore**:
+- `day-2/visual_ollama.py` - **NEW**: Vision model testing framework with multiple image types
+- `day-2/visual_ml_studio.py` - Alternative vision implementation
+- `day-1/intelligent_character_recognition.py` - OCR with vision models
+
+**Test Images** (in `day-2/data/`):
+- `IMG_1.jpg` - Technical graphs (ASI camera specs)
+- `IMG_2.jpg` - Bar charts and data visualization
+- `IMG_3.jpg` - Urban photography
+- `IMG_4.jpg` - Japanese menu (non-Latin script OCR)
+- `IMG_5.jpg`, `IMG_8.jpg` - French menus
+- `IMG_6.jpg` - Handwritten text (beer list)
+- `IMG_7.jpg` - Restaurant receipt
+- `IMG_9.jpg` - Sheet music (Debussy)
+- `IMG_10.jpg` - Technical diagrams
+- `IMG_11.jpg` - UI screenshots (button detection)
+- `IMG_12.jpg` - Mathematical equations
+
+**What you'll do**:
+1. Run `visual_ollama.py` to test vision models on various image types
+2. Try OCR with different scripts (English, Japanese, French)
+3. Extract structured data from receipts and menus
+4. Analyze technical graphs and extract specific values
+5. Test mathematical equation recognition
+6. Experiment with UI element detection and coordinates
+7. Use your own images!
+
+**Key takeaways**:
+- Vision-language models combine text and image understanding
+- Qwen3-VL models excel at multilingual OCR
+- Can extract structured data from images (receipts, forms)
+- Useful for document processing, chart reading, UI automation
+- Different model sizes (2b vs 4b) trade speed for accuracy
+- "Thinking" models show reasoning but need more tokens
+
+---
+
+### Session 8: Code Generation 💻
 
 **Concepts**: Code completion, fill-in-the-middle, code understanding
 
@@ -276,20 +376,42 @@ User Question → Embedding → Similarity Search → Top Chunks
 
 ---
 
-### Session 8: Function Calling & Tool Use 🛠️
+### Bonus: Text-to-Speech 🔊
+
+**Concepts**: Converting AI-generated text to natural speech
+
+**Files to explore**:
+- `day-2/cartesia_tts_test.py` - Text-to-speech using Cartesia API
+
+**What you'll do**:
+1. Generate natural-sounding speech from text
+2. Experiment with different voices and languages
+3. Combine with LLM output for voice assistants
+
+**Key takeaways**:
+- TTS bridges AI text output with voice interfaces
+- Multiple voice options for different use cases
+- Useful for accessibility and voice-based applications
+
+---
+
+### Session 9: Function Calling & Tool Use 🛠️
 
 **Concepts**: Tool calling, function definitions, autonomous actions
 
 **Files to explore**:
-- `day-2/ollama_function_support.py` - **KEY FILE**: Function calling framework
-- `day-2/ollama_function_results.csv` - Test results
+- `day-2/simple_tool_call.py` - **START HERE**: Simple currency conversion tool example
+- `day-2/ollama_function_support.py` - **COMPREHENSIVE**: Full function calling framework with multiple tools
+- `day-2/ollama_function_results.csv` - Model compatibility test results
 
 **What you'll do**:
-1. Study `ollama_function_support.py` to understand function calling
-2. Run tests to see which models support function calling
-3. Add your own custom functions/tools
-4. See how models decide when to call functions
-5. Experiment with function chaining (one function's output → next function's input)
+1. **Start with `simple_tool_call.py`** - understand the basic pattern with a single tool
+2. Progress to `ollama_function_support.py` for multiple tools and complex scenarios
+3. Run tests to see which models support function calling
+4. Add your own custom functions/tools
+5. See how models decide when to call functions
+6. Experiment with function chaining (one function's output → next function's input)
+7. Test different models and compare their tool-calling abilities
 
 **Available Functions in the Example**:
 - `convert_to_roman_numerals()` - Number conversion
@@ -324,20 +446,27 @@ LLM responds: "212°F is C in Roman numerals"
 
 ---
 
-### Session 9: Agentic Systems 🤖
+### Session 10: Agentic Systems & MCP 🤖
 
 **Concepts**: Autonomous AI agents, reasoning, tool orchestration, Model Context Protocol (MCP)
+
+**Files to explore** (in `day-2/MCP/`):
+- `README.md` - **START HERE**: Complete MCP documentation and setup guide
+- `mcp_server.py` - MCP server with country info and weather tools
+- `test_mcp_client_ollama.py` - Demo client using local Ollama models
+- `test_mcp_client.py` - Alternative client implementation
 
 **What you'll learn**:
 - What makes a system "agentic"?
 - How agents reason and plan
 - Multi-step problem solving
-- MCP architecture for tool integration
+- MCP (Model Context Protocol) - standardized tool interaction
 - Building autonomous agents that can:
-  - Understand goals
+  - Understand complex goals
   - Plan sequences of actions
-  - Use tools to accomplish tasks
+  - Use multiple tools in combination
   - Self-correct when needed
+  - Chain tool calls (e.g., find capital → get weather)
 
 **Agentic System Architecture**:
 ```
@@ -351,10 +480,13 @@ User Goal → Agent (LLM) → Reasoning Loop:
 ```
 
 **What you'll do**:
-1. Discuss real-world agentic system examples
-2. Build a simple agent workflow
-3. Explore MCP (Model Context Protocol) for tool integration
-4. See how agents combine RAG + function calling + reasoning
+1. Read `day-2/MCP/README.md` for comprehensive MCP introduction
+2. Run the MCP demo to see agentic behavior in action
+3. Watch the agent chain tool calls ("What's the weather in Germany's capital?")
+4. Try adding your own tools to the MCP server
+5. Experiment with different question complexities
+6. Compare local (Ollama) vs cloud (Claude) agentic behavior
+7. See how agents combine RAG + function calling + reasoning
 
 **Key takeaways**:
 - Agents = LLMs + Tools + Reasoning loop
@@ -427,16 +559,32 @@ mlcon-berlin-2025/
 │   └── ...
 │
 ├── day-2/                          # Day 2: Advanced Applications
-│   ├── analyse_sentiment_*.py     # Sentiment analysis
-│   ├── data_extraction_ollama.py  # Structured extraction
+│   ├── analyse_sentiment_*.py     # Sentiment analysis (3 versions)
+│   ├── data_extraction_ollama.py  # Structured extraction (local)
+│   ├── data_extraction_groq.py    # Structured extraction (cloud)
 │   ├── formatted_response_*.py    # JSON generation
 │   ├── fill_in_middle.py          # Code completion
-│   ├── ollama_function_support.py # Function calling (KEY!)
-│   ├── rag_*_chromadb.py          # Production RAG
+│   ├── simple_tool_call.py        # Simple function calling demo
+│   ├── ollama_function_support.py # Advanced function calling
+│   ├── visual_ollama.py           # Vision model testing framework
+│   ├── visual_ml_studio.py        # Alternative vision implementation
+│   ├── rag_alice_*.py             # Alice RAG (3 versions)
+│   ├── rag_grimm_fairy_tales*.py  # Grimm tales RAG (2 versions)
+│   ├── grimm_fairy_tales_rag_demo.py  # Interactive RAG demo
+│   ├── scrape*.py                 # Web scraping examples
+│   ├── payroll*.py                # Database integration
+│   ├── Grimms-Fairy-Tales.txt     # English fairy tales
+│   ├── Kinder-und-Hausmärchen-der-Gebrüder-Grimm.txt  # German fairy tales
+│   ├── gdpr_article_content.txt   # Legal text sample
 │   ├── data/                      # Sample datasets
 │   │   ├── alice_in_wonderland.txt
-│   │   └── IMG_*.jpg              # Vision model images
-│   └── chroma_db/                 # Vector database storage
+│   │   └── IMG_*.jpg              # 12 vision test images
+│   ├── chroma_db/                 # Vector database storage
+│   └── MCP/                       # Model Context Protocol demos
+│       ├── README.md              # Complete MCP guide
+│       ├── mcp_server.py          # MCP server implementation
+│       ├── test_mcp_client_ollama.py  # Ollama client
+│       └── test_mcp_client.py     # Alternative client
 │
 ├── requirements.txt                # Python dependencies
 └── README.md                      # This file
@@ -451,13 +599,18 @@ mlcon-berlin-2025/
 # 1. Make sure Ollama is running
 ollama serve
 
-# 2. Test your first AI interaction
+# 2. Pull the core models we'll use
+ollama pull qwen3:4b
+ollama pull qwen3-vl:4b-instruct
+ollama pull embeddinggemma
+
+# 3. Test your first AI interaction
 python day-1/getting_started_ollama.py
 
-# 3. See tokenization in action
+# 4. See tokenization in action
 python day-1/show_tokens.py
 
-# 4. Understand embeddings
+# 5. Understand embeddings
 python day-1/embedding_demo.py
 ```
 
@@ -469,14 +622,23 @@ python day-2/rag_alice_in_wonderland.py
 # Try sentiment analysis
 python day-2/analyse_sentiment_01.py
 
-# Explore function calling
+# Test vision models
+python day-2/visual_ollama.py
+
+# Explore function calling (start simple)
+python day-2/simple_tool_call.py
+
+# Try advanced function calling
 python day-2/ollama_function_support.py
 ```
 
 ### Rest of Workshop
-- Experiment with different models
-- Try your own data
-- Ask questions during hands-on time
+- Test vision models with your own images
+- Build RAG systems with your documents
+- Try Grimm fairy tales in German and English
+- Experiment with function calling and tool creation
+- Explore MCP for agentic systems
+- Compare local (Ollama) vs cloud (Groq) performance
 - Build something you can take home!
 
 ---
@@ -491,16 +653,39 @@ python day-2/ollama_function_support.py
 5. **Take notes**: Document what works for your use case
 
 ### Performance Tips
-- **Local models**: Smaller models (qwen3:4b) are faster but less capable
-- **Cloud models**: More expensive but more powerful and faster
-- **RAG systems**: Chunk size matters - experiment with 200-500 words
+- **Local models**: Smaller models (qwen3:4b, qwen3-vl:2b) are faster but less capable
+- **Cloud models**: More expensive but more powerful and faster (Groq is ultra-fast!)
+- **RAG systems**: 
+  - Chunk size matters - experiment with 200-500 words
+  - Use EmbeddingGemma with task-specific prompts for best results
+  - Story-aware chunking for narrative texts (see Grimm tales example)
+- **Vision models**: 
+  - qwen3-vl:4b-instruct is the sweet spot (speed vs accuracy)
+  - Use base64 encoding for images in API calls
+  - Increase token limits for "thinking" models
 - **Function calling**: Not all models support it equally - test before deploying
+  - qwen3-vl:4b-instruct and qwen2.5:3b are reliable for function calling
+  - See ollama_function_results.csv for model comparisons
 
 ### Common Issues
 - **Ollama not responding**: Make sure `ollama serve` is running
 - **Out of memory**: Use smaller models or reduce batch sizes
+  - Vision: Use qwen3-vl:2b instead of 4b
+  - Embeddings: Use all-minilm instead of embeddinggemma
 - **Slow embeddings**: Use lightweight models like `all-minilm` for testing
 - **Model hallucination**: Lower temperature (0.1-0.3) for factual tasks
+- **Vision model errors**: 
+  - Ensure images are properly base64 encoded
+  - Check image file paths are correct
+  - Some models need higher token limits for detailed analysis
+- **Function calling not working**: 
+  - Verify model supports function calling (not all do)
+  - Check function schema format matches OpenAI spec
+  - Try qwen3-vl:4b-instruct or qwen2.5:3b
+- **MCP connection issues**: 
+  - Ensure both server and client use stdio communication
+  - Check that Ollama is running before starting MCP demo
+  - Verify tool schemas are properly formatted
 
 ---
 
@@ -547,11 +732,15 @@ After completing this bootcamp, you can:
 5. **Join the community**: Contribute to open-source AI projects
 
 ### Project Ideas
-- **Document Q&A bot**: Upload PDFs, ask questions (use RAG)
+- **Document Q&A bot**: Upload PDFs, ask questions (use RAG + ChromaDB)
+- **Multilingual RAG system**: Build cross-language document search
+- **Receipt/Invoice processor**: Extract data from images (vision + structured output)
 - **Code reviewer**: Analyze code for bugs and improvements
 - **Data analyst agent**: Extract insights from CSV/JSON files
-- **Customer support bot**: Automate responses with function calling
+- **Customer support bot**: Automate responses with function calling + MCP
 - **Content summarizer**: Condense articles, papers, reports
+- **Visual documentation assistant**: Analyze diagrams and technical images
+- **Agentic research assistant**: Combine web search + RAG + function calling
 
 ---
 
