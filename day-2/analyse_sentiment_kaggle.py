@@ -35,7 +35,7 @@ WHAT THIS PREPARES FOR:
 NOTE: This script focuses on DATA LOADING, not sentiment analysis.
       To complete the pipeline, you would:
       1. Import analyse_sentiment() from Script 01 or 02
-      2. Apply it to the 'text' column of the DataFrame
+      2. Apply it to the 'content' column of the DataFrame
       3. Store results in a new 'sentiment' column
       4. Analyze sentiment distribution across the dataset
 
@@ -140,7 +140,7 @@ if __name__ == "__main__":
     
     TO BUILD COMPLETE PIPELINE:
     1. Import analyse_sentiment from Script 01 or 02
-    2. Apply to DataFrame: df['sentiment'] = df['text'].apply(analyse_sentiment)
+    2. Apply to DataFrame: df['sentiment'] = df['content'].apply(analyse_sentiment)
     3. Analyze results: df['sentiment'].value_counts()
     4. Visualize distribution of sentiments
     
@@ -159,7 +159,7 @@ if __name__ == "__main__":
     print("\nFirst 6 rows of the dataset:")
     print(tweets_df.head(6))
     # This shows us what data is available:
-    # - 'text' column: The actual tweet content (what we'll analyze)
+    # - 'content' column: The actual tweet content (what we'll analyze)
     # - Other columns: Metadata like date, retweets, favorites, etc.
 
     # Demonstrate different data formats
@@ -174,7 +174,7 @@ if __name__ == "__main__":
     print("\nThis dataset is now ready for sentiment analysis!")
     print("\nNEXT STEPS to complete the pipeline:")
     print("1. Import analyse_sentiment() from Script 01 or 02")
-    print("2. Apply to text column: tweets_df['sentiment'] = tweets_df['text'].apply(analyse_sentiment)")
+    print("2. Apply to content column: tweets_df['sentiment'] = tweets_df['content'].apply(analyse_sentiment)")
     print("3. Analyze distribution: tweets_df['sentiment'].value_counts()")
     print("4. Calculate percentages: tweets_df['sentiment'].value_counts(normalize=True)")
     print("\nWARNING: Processing thousands of tweets with LLM will take time!")
