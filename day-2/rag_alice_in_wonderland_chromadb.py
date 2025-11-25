@@ -1,12 +1,40 @@
+"""RAG implementation with ChromaDB persistent storage.
+
+BUILDS ON: rag_alice_in_wonderland.py
+
+KEY DIFFERENCE: Persistent Storage
+- This version adds ChromaDB for persistent vector storage
+- Embeddings are saved to disk and reused across runs
+- File hash checking prevents unnecessary re-embedding
+- Significantly faster startup after first run
+
+What's the same:
+- Same OllamaClient for embeddings and LLM
+- Same TextChunker for intelligent text splitting
+- Same retrieval logic (cosine similarity)
+- Same query processing and answer generation
+
+What's new:
+- PersistentChromaRetriever class for storage management
+- File hash tracking to detect when re-embedding is needed
+- ChromaDB collection management
+- Persistent storage in ./chroma_db directory
+
+When to use this version:
+- Working with large documents (saves time on subsequent runs)
+- Need to query repeatedly without re-embedding
+- Want to persist your vector database between sessions
+"""
+
 from typing import List, Tuple
 import numpy as np
 import requests
 from dataclasses import dataclass
 import re
 from pathlib import Path
-import chromadb
+import chromadb  # NEW: Vector database for persistent storage
 from chromadb.config import Settings
-import hashlib
+import hashlib  # NEW: For file change detection
 
 
 @dataclass
@@ -165,23 +193,41 @@ class TextChunker:
 
 
 class PersistentChromaRetriever:
+    """NEW CLASS: Manages persistent vector storage using ChromaDB.
+    
+    This replaces the simple in-memory list used in the base implementation.
+    ChromaDB stores embeddings on disk so they persist between runs.
+    
+    Benefits:
+    - No need to regenerate embeddings every time
+    - Faster startup after initial embedding
+    - Efficient similarity search built-in
+    - Can handle larger datasets
+    """
+    
     def __init__(self, collection_name: str = "text_chunks", persist_directory: str = "./chroma_db"):
+        """Initialize ChromaDB with persistent storage.
+        
+        Args:
+            collection_name: Name for this collection of embeddings
+            persist_directory: Where to store the database on disk
+        """
         self.persist_directory = Path(persist_directory)
         self.persist_directory.mkdir(exist_ok=True)
 
-        # Initialize client with maintenance settings
+        # Initialize ChromaDB client with persistence enabled
         self.client = chromadb.PersistentClient(
             path=str(self.persist_directory),
             settings=Settings(
-                anonymized_telemetry=False,
-                allow_reset=True
+                anonymized_telemetry=False,  # Privacy
+                allow_reset=True  # Allow clearing collections
             )
         )
 
         self.collection_name = collection_name
-        self.documents = []
+        self.documents = []  # Keep documents in memory too for statistics
 
-        # Try to get existing collection or create new one
+        # Try to load existing collection from disk
         try:
             self.collection = self.client.get_collection(name=collection_name)
             count = self.collection.count()
@@ -189,15 +235,27 @@ class PersistentChromaRetriever:
                 print(f"Found existing ChromaDB with {count} chunks")
                 self._load_documents_from_chroma()
         except:
+            # No existing collection, create a new one
             self.collection = self.client.create_collection(name=collection_name)
 
     def _get_file_hash(self, file_path: str) -> str:
-        """Generate hash of file content"""
+        """Generate MD5 hash of file content.
+        
+        NEW: Used to detect if source file has changed since last embedding.
+        If hash matches, we can reuse existing embeddings.
+        """
         with open(file_path, 'rb') as f:
             return hashlib.md5(f.read()).hexdigest()
 
     def needs_update(self, file_path: str) -> bool:
-        """Check if the collection needs to be updated based on file hash"""
+        """Check if source file has changed since last embedding.
+        
+        NEW: Optimization to avoid re-embedding unchanged files.
+        Compares current file hash with stored hash.
+        
+        Returns:
+            True if file changed or no hash stored, False if unchanged
+        """
         hash_file = self.persist_directory / f"{self.collection_name}_hash.txt"
         current_hash = self._get_file_hash(file_path)
 
@@ -210,44 +268,61 @@ class PersistentChromaRetriever:
         return current_hash != stored_hash
 
     def _save_file_hash(self, file_path: str):
-        """Save file hash"""
+        """Save hash of current file for future comparison.
+        
+        NEW: Called after successful embedding to mark this version.
+        """
         hash_file = self.persist_directory / f"{self.collection_name}_hash.txt"
         with open(hash_file, 'w') as f:
             f.write(self._get_file_hash(file_path))
 
     def _load_documents_from_chroma(self):
-        """Load existing documents from ChromaDB"""
+        """Load existing documents from persistent ChromaDB storage.
+        
+        NEW: Restores previously embedded chunks from disk.
+        Much faster than re-embedding!
+        """
+        # Retrieve all stored documents from ChromaDB
         results = self.collection.get(
             include=["documents", "metadatas", "embeddings"]
         )
 
+        # Reconstruct Document objects from stored data
         for i, (text, metadata, embedding) in enumerate(zip(results['documents'], results['metadatas'], results['embeddings'])):
             doc = Document(
                 text=text,
                 chunk_id=int(metadata['chunk_id']),
-                embedding=np.array(embedding)
+                embedding=np.array(embedding)  # Convert back to numpy
             )
             self.documents.append(doc)
 
     def add_documents(self, documents: List[Document], file_path: str = None):
-        # Filter documents with embeddings
+        """Store documents and embeddings in ChromaDB.
+        
+        NEW: Persists embeddings to disk instead of just keeping in memory.
+        
+        Args:
+            documents: List of Document objects with embeddings
+            file_path: Optional path to save file hash for change detection
+        """
+        # Only process documents with valid embeddings
         valid_docs = [doc for doc in documents if doc.embedding is not None]
 
         if not valid_docs:
             raise ValueError("No documents with valid embeddings provided")
 
-        # Clear existing collection
+        # Clear any existing collection (start fresh)
         if self.collection.count() > 0:
             self.client.delete_collection(self.collection_name)
             self.collection = self.client.create_collection(self.collection_name)
 
-        # Prepare data for Chroma
+        # Prepare data in ChromaDB format
         ids = [str(i) for i in range(len(valid_docs))]
         texts = [doc.text for doc in valid_docs]
-        embeddings = [doc.embedding.tolist() for doc in valid_docs]
+        embeddings = [doc.embedding.tolist() for doc in valid_docs]  # Convert to list for JSON
         metadatas = [{"chunk_id": str(doc.chunk_id)} for doc in valid_docs]
 
-        # Add to Chroma collection
+        # Store in ChromaDB (persisted to disk)
         self.collection.add(
             ids=ids,
             documents=texts,
@@ -257,6 +332,7 @@ class PersistentChromaRetriever:
 
         self.documents = valid_docs
 
+        # Save file hash for future change detection
         if file_path:
             self._save_file_hash(file_path)
 
@@ -265,21 +341,33 @@ class PersistentChromaRetriever:
         return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
     def get_relevant_chunks(self, query_embedding: np.ndarray, top_k: int = 10) -> List[Tuple[Document, float]]:
-        # Query Chroma
+        """Query ChromaDB for most similar chunks.
+        
+        NEW: Uses ChromaDB's built-in similarity search instead of manual iteration.
+        ChromaDB handles the similarity computation efficiently.
+        
+        Args:
+            query_embedding: Query vector to match against
+            top_k: Number of results to return
+            
+        Returns:
+            List of (Document, similarity_score) tuples
+        """
+        # Query ChromaDB's vector index (optimized search)
         results = self.collection.query(
             query_embeddings=[query_embedding.tolist()],
             n_results=top_k,
             include=["documents", "metadatas", "embeddings"]
         )
 
-        # Convert to Document objects with similarity scores
+        # Convert ChromaDB results back to Document objects
         relevant_docs = []
         for i in range(len(results['ids'][0])):
             text = results['documents'][0][i]
             metadata = results['metadatas'][0][i]
             embedding = np.array(results['embeddings'][0][i])
 
-            # Calculate cosine similarity
+            # Calculate cosine similarity for display/sorting
             similarity = self._cosine_similarity(query_embedding, embedding)
 
             doc = Document(
@@ -295,17 +383,37 @@ class PersistentChromaRetriever:
 
 
 class GenericRAG:
+    """RAG system with persistent ChromaDB storage.
+    
+    MODIFIED: Now uses PersistentChromaRetriever instead of in-memory list.
+    
+    Key differences from base version:
+    - Checks if embeddings already exist before loading
+    - Reuses existing embeddings if file unchanged (major speedup)
+    - Stores retriever instance instead of just documents list
+    """
+    
     def __init__(self, file_path: str, chunker: TextChunker = None, persist_directory: str = "./chroma_db"):
+        """Initialize RAG system with persistent storage.
+        
+        NEW PARAMETER: persist_directory - where to store ChromaDB
+        
+        Args:
+            file_path: Path to text file to process
+            chunker: Optional TextChunker instance
+            persist_directory: Where to store persistent embeddings
+        """
         self.file_path = Path(file_path)
         self.chunker = chunker if chunker else TextChunker()
         self.ollama = OllamaClient()
-        self.retriever = PersistentChromaRetriever(persist_directory=persist_directory)
+        self.retriever = PersistentChromaRetriever(persist_directory=persist_directory)  # NEW
         self.documents: List[Document] = []
 
+        # NEW: Smart loading - only embed if file changed
         if self.retriever.needs_update(str(self.file_path)):
-            self._load_document()
+            self._load_document()  # File changed, re-embed
         else:
-            print("Using existing embeddings from ChromaDB")
+            print("Using existing embeddings from ChromaDB")  # Much faster!
             self.documents = self.retriever.documents
 
     def _clean_text(self, text: str) -> str:
@@ -339,7 +447,7 @@ class GenericRAG:
         # Create chunks
         chunks = self.chunker.chunk_text(text)
 
-        # Generate embeddings
+        # Generate embeddings (same as base version)
         for i, chunk in enumerate(chunks):
             try:
                 chunk.embedding = self.ollama.get_embedding(chunk.text, "document")
@@ -349,7 +457,7 @@ class GenericRAG:
             except Exception as e:
                 print(f"Failed to embed chunk {i}: {e}")
 
-        # Store in ChromaDB
+        # NEW: Persist embeddings to disk via ChromaDB
         self.retriever.add_documents(self.documents, str(self.file_path))
         print(f"Ready! {len(self.documents)} chunks loaded and saved to ChromaDB.")
 
@@ -358,11 +466,14 @@ class GenericRAG:
         return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
     def _retrieve_chunks(self, query: str, top_k: int = 10) -> List[Tuple[Document, float]]:
-        """Retrieve most relevant chunks using pure semantic similarity."""
-        # Get query embedding
+        """Retrieve most relevant chunks using semantic similarity.
+        
+        MODIFIED: Now delegates to ChromaDB retriever instead of manual iteration.
+        """
+        # Get query embedding (same as base version)
         query_embedding = self.ollama.get_embedding(query, "query")
 
-        # Use ChromaDB retriever
+        # NEW: Use ChromaDB's optimized similarity search
         return self.retriever.get_relevant_chunks(query_embedding, top_k)
 
     def _show_match_details(self, matches: List[Tuple[Document, float]], query: str) -> None:
@@ -438,7 +549,11 @@ Answer:"""
 
 
 def main():
-    """Demo the ChromaDB RAG system with configurable chunking."""
+    """Demo the ChromaDB RAG system with persistent storage.
+    
+    NOTE: First run will embed the document (takes time).
+    Subsequent runs will reuse stored embeddings (much faster).
+    """
     print("ChromaDB RAG Demo System")
     print("Make sure Ollama is running on port 11434\n")
 
