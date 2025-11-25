@@ -151,7 +151,6 @@ def distance_tool(location: str) -> int:
 def get_available_models() -> list:
     try:
         response = requests.get('http://localhost:11434/api/tags')
-        # response = requests.get('http://localhost:8899/v1/models')
         models = response.json()['models']
         return models
     except requests.RequestException as e:
@@ -163,37 +162,12 @@ def is_suitable_model(model: Dict[str, Any]) -> bool:
     """Filter for suitable models - adjust criteria as needed"""
     return (model["size"] <=10_000_000_000 and
             "bert" not in model["details"]["family"]
-            and "qwen3:4b" in model["name"] )
-                # and model["name"] in [
-            # "qwen3:latest",
-            # "qwen3:0.6b-fp16",
-            # "qwen3:1.7b-fp16",
-            # "qwen3:4b-fp16",
-            # "qwen3:latest",
-            # "mistral-nemo:latest",
-            # "qwen2.5:3b-instruct-fp16",
-            # "qwen2.5:7b-instruct-fp16",
-            # "aya-expanse:8b",
-            # "qwen2.5-coder:14b",
-            # "qwen2.5-coder:7b",
-            # "mistral-small:latest",
-            # "granite3.1-dense:latest",
-            # "qwen2.5-coder:latest",
-            # "aya-expanse:latest",
-            # "qwen2.5:latest",
-            # "llama3.2:3b-instruct-fp16",
-            # "qwen2.5:1.5b:latest",
-            # "llama3.2:1b:latest",
-            # "qwen2.5:1.5b-instruct-fp16",
-            # "qwen2.5:0.5b-instruct-fp16",
-            # "mistral:7b-instruct-v0.3-fp16",
-            # "llama3.2:3b-instruct-fp16",
-            # "qwen2.5:3b:latest",
-            # "qwen2.5:1.5b-instruct:latest",
-            # "granite3.1-moe:3b-instruct-fp16",
-            # "smollm2:latest",
-            # ]
-            # )
+                and model["name"] in [
+                    "qwen3-vl:4b-instruct",
+                    "qwen3-vl:2b-instruct",
+                    "gemma3:latest",
+            ]
+            )
 
 
 def run_single_test(prompt: str, expected_result: int, model: str) -> tuple[Dict[str, Any], float]:
@@ -227,7 +201,7 @@ def run_single_test(prompt: str, expected_result: int, model: str) -> tuple[Dict
                    weather_tool, time_tool,
                    location_tool, distance_tool,
                    ],
-            options={"temperature": 0.2}
+            options={"temperature": 0.6}
         )
 
         results['raw_response'] = response.message

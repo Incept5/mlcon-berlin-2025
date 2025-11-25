@@ -15,7 +15,7 @@ def main():
 """
 
 response = generate(
-  model='llama3.2',
+  model='codellama:code',
   prompt=prompt,
   suffix=suffix,
   options={

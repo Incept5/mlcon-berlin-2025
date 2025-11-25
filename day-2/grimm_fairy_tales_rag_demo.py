@@ -141,7 +141,7 @@ def display_results(query: str, results: List[Dict[str, Any]]) -> None:
         text = result['text']
         tokens = result['tokens']
         total_tokens += tokens
-        display_text = text[:150] + "..." if len(text) > 150 else text
+        display_text = text[:100] + "..." if len(text) > 100 else text
         print(f"{i}. [Score: {similarity:.3f}] [Tokens: {tokens}] {display_text}")
     
     print(f"\nTotal tokens in results: {total_tokens}")
@@ -150,7 +150,7 @@ def display_results(query: str, results: List[Dict[str, Any]]) -> None:
 
 def generate_answer(query: str, results: List[Dict[str, Any]]) -> None:
     """Generate a complete answer using qwen3 via ollama with retrieved context."""
-    LLM = "qwen3:4b"
+    LLM = "qwen3-vl:4b-instruct"
     THINKING = False
     console = Console()
     
@@ -189,7 +189,7 @@ Please provide a short, direct answer in English."""
             )
         )
         
-        console.print("\n[bold green]🧠 RAG Answer:[/bold green]")
+        console.print("\n[bold green]RAG Answer:[/bold green]")
         
         if hasattr(response.message, 'thinking') and response.message.thinking:
             console.print(f"[dim]Thinking: {response.message.thinking[:200]}...[/dim]")
@@ -202,7 +202,7 @@ Please provide a short, direct answer in English."""
 
 def main() -> None:
     """Main demo function."""
-    print("🔍 Simple Grimm Tales RAG Search Demo")
+    print("Simple Grimm Tales RAG Search Demo")
     print("=" * 40)
     
     # Setup device

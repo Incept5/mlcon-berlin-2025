@@ -46,7 +46,7 @@ class TransformerEmbedder:
 
 
 class OllamaLLM:
-    def __init__(self, model: str = "gemma3n:e4b"):
+    def __init__(self, model: str = "qwen3-vl:4b-instruct"):
         self.model = model
         self.base_url = "http://localhost:11434/api"
 
