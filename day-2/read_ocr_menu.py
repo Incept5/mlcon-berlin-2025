@@ -17,12 +17,15 @@ Usage:
 """
 
 import ollama
-from typing import List
+import time
+from typing import List, Dict, Any
 
 
 # Configuration
 MODELS: List[str] = [
     "qwen3-vl:4b-instruct",
+    "qwen3-vl:2b-instruct",
+    "qwen3-vl:8b-instruct",
     "deepseek-ocr"
 ]
 IMAGE_PATH: str = "data/IMG_5.jpg"
@@ -47,7 +50,29 @@ def get_ocr_prompt(model_name: str) -> str:
     return "Read all text from this image. Output only the text exactly as written."
 
 
-def extract_text_from_image(model_name: str, image_path: str) -> str:
+def warmup_model(model_name: str, image_path: str) -> None:
+    """Run a dummy inference to load the model into memory."""
+    print(f"Warming up model: {model_name}...")
+
+    try:
+        # Simple dummy prompt
+        dummy_prompt = "What do you see in this image?"
+
+        ollama.chat(
+            model=model_name,
+            messages=[{
+                'role': 'user',
+                'content': dummy_prompt,
+                'images': [image_path]
+            }],
+            options={'temperature': 0.0}
+        )
+        print(f"✓ Model {model_name} loaded and ready")
+    except Exception as e:
+        print(f"✗ Warmup failed for {model_name}: {e}")
+
+
+def extract_text_from_image(model_name: str, image_path: str) -> tuple[str, float]:
     """
     Extract text from an image using the specified vision model.
 
@@ -56,13 +81,14 @@ def extract_text_from_image(model_name: str, image_path: str) -> str:
         image_path: Path to the image file
 
     Returns:
-        Extracted text from the image
+        Tuple of (extracted text, inference time in seconds)
 
     Raises:
         Exception: If the model fails or is not available
     """
     prompt = get_ocr_prompt(model_name)
 
+    start_time = time.time()
     response = ollama.chat(
         model=model_name,
         messages=[{
@@ -72,8 +98,9 @@ def extract_text_from_image(model_name: str, image_path: str) -> str:
         }],
         options={'temperature': 0.0}  # Deterministic output
     )
+    inference_time = time.time() - start_time
 
-    return response['message']['content']
+    return response['message']['content'], inference_time
 
 
 def print_header(title: str, width: int = 60) -> None:
@@ -83,11 +110,12 @@ def print_header(title: str, width: int = 60) -> None:
     print("=" * width)
 
 
-def print_result(model_name: str, text: str, width: int = 60) -> None:
+def print_result(model_name: str, text: str, inference_time: float, width: int = 60) -> None:
     """Print OCR result in a formatted way."""
     print(f"\nModel: {model_name}")
     print("-" * width)
     print(text)
+    print(f"\n⏱️  Inference time: {inference_time:.2f}s")
     print("=" * width)
 
 
@@ -95,18 +123,44 @@ def main() -> None:
     """Run OCR on the specified image using multiple models."""
     print_header("MENU OCR DEMO")
     print(f"Image: {IMAGE_PATH}")
-    print(f"Models: {len(MODELS)}")
+    print(f"Models: {', '.join(MODELS)}")
+
+    results: Dict[str, Any] = {}
 
     for model in MODELS:
         try:
-            text = extract_text_from_image(model, IMAGE_PATH)
-            print_result(model, text)
+            # Warmup the model first
+            warmup_model(model, IMAGE_PATH)
+
+            # Extract text with timing
+            text, inference_time = extract_text_from_image(model, IMAGE_PATH)
+            print_result(model, text, inference_time)
+
+            results[model] = {
+                'success': True,
+                'time': inference_time
+            }
 
         except Exception as e:
             print(f"\nModel: {model}")
             print("-" * 60)
             print(f"ERROR: {e}")
             print("=" * 60)
+            results[model] = {
+                'success': False,
+                'error': str(e)
+            }
+
+    # Summary
+    print("\n" + "="*60)
+    print("SUMMARY")
+    print("="*60)
+    for model, result in results.items():
+        if result['success']:
+            print(f"{model}: ✓ Success, {result['time']:.2f}s")
+        else:
+            print(f"{model}: ✗ ERROR - {result['error']}")
+    print("="*60)
 
 
 if __name__ == "__main__":

@@ -16,13 +16,14 @@ Usage: python find_beer.py
 
 import json
 import re
+import time
 import ollama
 from PIL import Image, ImageDraw, ImageFont
 
 # ============================================================================
 # CONFIGURATION - Edit these values
 # ============================================================================
-MODELS = ["qwen3-vl:4b-instruct", "deepseek-ocr"]
+MODELS = ["qwen3-vl:4b-instruct", "qwen3-vl:2b-instruct", "ministral-3:3b-instruct-2512-q4_K_M", "deepseek-ocr"]
 IMAGE_PATH = "data/RTS1UI9-1024x659.jpg"
 
 # ============================================================================
@@ -67,6 +68,28 @@ def extract_boxes_from_text(text):
     return None
 
 
+def warmup_model(model_name, image_path):
+    """Run a dummy inference to load the model into memory."""
+    print(f"Warming up model: {model_name}...")
+
+    try:
+        # Simple dummy prompt
+        dummy_prompt = "What do you see in this image?"
+
+        ollama.chat(
+            model=model_name,
+            messages=[{
+                'role': 'user',
+                'content': dummy_prompt,
+                'images': [image_path]
+            }],
+            options={'temperature': 0.0}
+        )
+        print(f"✓ Model {model_name} loaded and ready")
+    except Exception as e:
+        print(f"✗ Warmup failed for {model_name}: {e}")
+
+
 def detect_beer(model_name, image_path):
     """Detect beer in image using specified model."""
     print(f"\n{'='*60}")
@@ -88,7 +111,8 @@ Return ONLY a JSON array:
 
 Where x1,y1 is top-left and x2,y2 is bottom-right. Use integers."""
 
-    # Call Ollama
+    # Call Ollama with timing
+    start_time = time.time()
     response = ollama.chat(
         model=model_name,
         messages=[{
@@ -98,18 +122,20 @@ Where x1,y1 is top-left and x2,y2 is bottom-right. Use integers."""
         }],
         options={'temperature': 0.0}
     )
+    inference_time = time.time() - start_time
 
     output = response['message']['content']
-    print(f"\nModel Response:\n{output[:500]}...")
+    print(f"\nModel Response:\n{output[:1000]}...")
+    print(f"\n⏱️  Inference time: {inference_time:.2f}s")
 
     boxes = extract_boxes_from_text(output)
 
     if boxes:
         print(f"\n✓ Found {len(boxes)} beer container(s)")
-        return boxes
+        return boxes, inference_time
     else:
         print("\n✗ No boxes detected")
-        return []
+        return [], inference_time
 
 
 def draw_boxes(image_path, boxes, model_name):
@@ -175,20 +201,25 @@ if __name__ == "__main__":
 
     for model in MODELS:
         try:
-            # Detect beer
-            boxes = detect_beer(model, IMAGE_PATH)
+            # Warmup the model first
+            warmup_model(model, IMAGE_PATH)
+
+            # Detect beer with timing
+            boxes, inference_time = detect_beer(model, IMAGE_PATH)
 
             # Draw and display if boxes found
             if boxes:
                 output_path = draw_boxes(IMAGE_PATH, boxes, model)
                 results[model] = {
                     'boxes': len(boxes),
-                    'output': output_path
+                    'output': output_path,
+                    'time': inference_time
                 }
             else:
                 results[model] = {
                     'boxes': 0,
-                    'output': None
+                    'output': None,
+                    'time': inference_time
                 }
 
         except Exception as e:
@@ -203,5 +234,6 @@ if __name__ == "__main__":
         if 'error' in result:
             print(f"{model}: ERROR - {result['error']}")
         else:
-            print(f"{model}: {result['boxes']} detections -> {result.get('output', 'N/A')}")
+            time_str = f"{result['time']:.2f}s" if 'time' in result else "N/A"
+            print(f"{model}: {result['boxes']} detections, {time_str} -> {result.get('output', 'N/A')}")
     print("="*60)
